@@ -32,19 +32,19 @@ var (
 type LexerState int
 
 const (
-	stateInitial LexerState = iota
-	stateTokenise
-	stateNonMathQuestion
-	stateUnsupportedOperation
-	stateEOF
+	stateLexerInitial LexerState = iota
+	stateLexerTokenise
+	stateLexerNonMathQuestion
+	stateLexerUnsupportedOperation
+	stateLexerEOF
 )
 
 type LexerEvent int
 
 const (
-	eventSupportedToken LexerEvent = iota
-	eventUnsupportedToken
-	eventEOF
+	eventLexerSupportedToken LexerEvent = iota
+	eventLexerUnsupportedToken
+	eventLexerEOF
 )
 
 func TokeniseCallback(delta sm.Delta, ctx sm.Context) error {
@@ -89,12 +89,12 @@ func NonMathQuestionCallback(delta sm.Delta, ctx sm.Context) error {
 	return ErrNonMathQuestion
 }
 
-var deltas = []sm.Delta{
-	{Current: sm.State(stateTokenise), Event: sm.Event(eventSupportedToken), Next: sm.State(stateTokenise), Predicate: nil, Callback: TokeniseCallback},
-	{Current: sm.State(stateTokenise), Event: sm.Event(eventEOF), Next: sm.State(stateEOF), Predicate: HasMathQuestion, Callback: nil},
-	{Current: sm.State(stateTokenise), Event: sm.Event(eventEOF), Next: sm.State(stateNonMathQuestion), Predicate: HasNotMathQuestion, Callback: NonMathQuestionCallback},
-	{Current: sm.State(stateTokenise), Event: sm.Event(eventUnsupportedToken), Next: sm.State(stateNonMathQuestion), Predicate: HasNotMathQuestion, Callback: NonMathQuestionCallback},
-	{Current: sm.State(stateTokenise), Event: sm.Event(eventUnsupportedToken), Next: sm.State(stateUnsupportedOperation), Predicate: HasMathQuestion, Callback: UnsupportedOperationCallback},
+var lexerDeltas = []sm.Delta{
+	{Current: sm.State(stateLexerTokenise), Event: sm.Event(eventLexerSupportedToken), Next: sm.State(stateLexerTokenise), Predicate: nil, Callback: TokeniseCallback},
+	{Current: sm.State(stateLexerTokenise), Event: sm.Event(eventLexerEOF), Next: sm.State(stateLexerEOF), Predicate: HasMathQuestion, Callback: nil},
+	{Current: sm.State(stateLexerTokenise), Event: sm.Event(eventLexerEOF), Next: sm.State(stateLexerNonMathQuestion), Predicate: HasNotMathQuestion, Callback: NonMathQuestionCallback},
+	{Current: sm.State(stateLexerTokenise), Event: sm.Event(eventLexerUnsupportedToken), Next: sm.State(stateLexerNonMathQuestion), Predicate: HasNotMathQuestion, Callback: NonMathQuestionCallback},
+	{Current: sm.State(stateLexerTokenise), Event: sm.Event(eventLexerUnsupportedToken), Next: sm.State(stateLexerUnsupportedOperation), Predicate: HasMathQuestion, Callback: UnsupportedOperationCallback},
 }
 
 type PatternFinder interface {
@@ -115,7 +115,7 @@ func Lex(input string) ([]Token, error) {
 
 		Tokens: []Token{},
 	}
-	lexer := sm.New(sm.State(stateTokenise), deltas, &ctx)
+	lexer := sm.New(sm.State(stateLexerTokenise), lexerDeltas, &ctx)
 
 	validPattern := fmt.Sprintf("%s|%s|%s|%s",
 		QuestionTokenPattern, NumberTokenPattern, OperandTokenPattern, PunctuationTokenPattern)
@@ -125,9 +125,9 @@ func Lex(input string) ([]Token, error) {
 		var err error
 
 		if validRegex.MatchString(ctx.Input) {
-			err = lexer.Exec(sm.Event(eventSupportedToken))
+			err = lexer.Exec(sm.Event(eventLexerSupportedToken))
 		} else {
-			err = lexer.Exec(sm.Event(eventUnsupportedToken))
+			err = lexer.Exec(sm.Event(eventLexerUnsupportedToken))
 		}
 
 		if err != nil {
@@ -135,7 +135,7 @@ func Lex(input string) ([]Token, error) {
 		}
 	}
 
-	err := lexer.Exec(sm.Event(eventEOF))
+	err := lexer.Exec(sm.Event(eventLexerEOF))
 	if err != nil {
 		return nil, err
 	}
