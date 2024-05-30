@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -31,29 +32,43 @@ var (
 type LexerState int
 
 const (
-	STATE_INITIAL LexerState = iota
-	STATE_TOKENISE
-	STATE_UNSUPPORTED_TOKEN
-	STATE_NON_MATH_QUESTION
-	STATE_UNSUPPORTED_OPERATION
-	STATE_FINAL
+	stateInitial LexerState = iota
+	stateTokenise
+	stateNonMathQuestion
+	stateUnsupportedOperation
+	stateEOF
 )
 
 type LexerEvent int
 
 const (
-	EVENT_SUPPORTED_TOKEN LexerEvent = iota
-	EVENT_UNSUPPORTED_TOKEN
-	EVENT_PUNCTUATION_MARK
-	EVENT_QUESTION
-	EVENT_NO_QUESTION
+	eventSupportedToken LexerEvent = iota
+	eventUnsupportedToken
+	eventEOF
 )
+
+func TokeniseCallback(delta sm.Delta, ctx sm.Context) error {
+	lexerCtx := ctx.(*LexerContext)
+
+	for finder, tokenConstructor := range lexerCtx.FinderToConstructorMap {
+		if value := finder.FindString(lexerCtx.Input); value != "" {
+			lexerCtx.Tokens = append(lexerCtx.Tokens, tokenConstructor(value))
+
+			lexerCtx.Input = lexerCtx.Input[len(value):]
+			lexerCtx.Input = strings.TrimSpace(lexerCtx.Input)
+
+			return nil
+		}
+	}
+
+	return errors.New("event cannot be executed, invalid context")
+}
 
 func HasMathQuestion(delta sm.Delta, ctx sm.Context) (bool, error) {
 	lexerCtx := ctx.(*LexerContext)
 
 	for _, token := range lexerCtx.Tokens {
-		if _, ok := token.(*QuestionToken); !ok {
+		if _, ok := token.(*QuestionToken); ok {
 			return true, nil
 		}
 	}
@@ -75,66 +90,73 @@ func NonMathQuestionCallback(delta sm.Delta, ctx sm.Context) error {
 }
 
 var deltas = []sm.Delta{
-	{Current: sm.State(STATE_TOKENISE), Event: sm.Event(EVENT_SUPPORTED_TOKEN), Next: sm.State(STATE_TOKENISE), Predicate: nil, Callback: nil},
-	{Current: sm.State(STATE_TOKENISE), Event: sm.Event(EVENT_PUNCTUATION_MARK), Next: sm.State(STATE_FINAL), Predicate: HasMathQuestion, Callback: nil},
-	{Current: sm.State(STATE_TOKENISE), Event: sm.Event(EVENT_PUNCTUATION_MARK), Next: sm.State(STATE_NON_MATH_QUESTION), Predicate: HasNotMathQuestion, Callback: NonMathQuestionCallback},
-	{Current: sm.State(STATE_TOKENISE), Event: sm.Event(EVENT_UNSUPPORTED_TOKEN), Next: sm.State(STATE_NON_MATH_QUESTION), Predicate: HasNotMathQuestion, Callback: NonMathQuestionCallback},
-	{Current: sm.State(STATE_TOKENISE), Event: sm.Event(EVENT_UNSUPPORTED_TOKEN), Next: sm.State(STATE_UNSUPPORTED_OPERATION), Predicate: HasMathQuestion, Callback: UnsupportedOperationCallback},
+	{Current: sm.State(stateTokenise), Event: sm.Event(eventSupportedToken), Next: sm.State(stateTokenise), Predicate: nil, Callback: TokeniseCallback},
+	{Current: sm.State(stateTokenise), Event: sm.Event(eventEOF), Next: sm.State(stateEOF), Predicate: HasMathQuestion, Callback: nil},
+	{Current: sm.State(stateTokenise), Event: sm.Event(eventEOF), Next: sm.State(stateNonMathQuestion), Predicate: HasNotMathQuestion, Callback: NonMathQuestionCallback},
+	{Current: sm.State(stateTokenise), Event: sm.Event(eventUnsupportedToken), Next: sm.State(stateNonMathQuestion), Predicate: HasNotMathQuestion, Callback: NonMathQuestionCallback},
+	{Current: sm.State(stateTokenise), Event: sm.Event(eventUnsupportedToken), Next: sm.State(stateUnsupportedOperation), Predicate: HasMathQuestion, Callback: UnsupportedOperationCallback},
+}
+
+type PatternFinder interface {
+	FindString(string) string
 }
 
 type LexerContext struct {
+	Input                  string
+	FinderToConstructorMap map[PatternFinder]NewTokenFunc
+
 	Tokens []Token
 }
 
 func Lex(input string) ([]Token, error) {
-	ctx := LexerContext{}
-	lexer := sm.New(sm.State(STATE_TOKENISE), deltas, &ctx)
+	ctx := LexerContext{
+		Input:                  input,
+		FinderToConstructorMap: newFinderToConstructorMap(),
 
-	qre := regexp.MustCompile(`^What is`)
-	nre := regexp.MustCompile(`^\d+`)
-	ore := regexp.MustCompile(`^(plus|minus|multiplied by|divided by)`)
-	pre := regexp.MustCompile(`^\?`)
+		Tokens: []Token{},
+	}
+	lexer := sm.New(sm.State(stateTokenise), deltas, &ctx)
 
-	input = strings.TrimSpace(input)
+	validPattern := fmt.Sprintf("%s|%s|%s|%s",
+		QuestionTokenPattern, NumberTokenPattern, OperandTokenPattern, PunctuationTokenPattern)
+	validRegex := regexp.MustCompile(validPattern)
 
-	for len(input) > 0 {
+	for len(ctx.Input) > 0 {
 		var err error
 
-		if qre.MatchString(input) {
-			err = lexer.Exec(sm.Event(EVENT_SUPPORTED_TOKEN))
-
-			match := qre.FindString(input)
-			ctx.Tokens = append(ctx.Tokens, &QuestionToken{Value: match})
-			input = input[len(match):]
-		} else if nre.MatchString(input) {
-			err = lexer.Exec(sm.Event(EVENT_SUPPORTED_TOKEN))
-
-			match := nre.FindString(input)
-			ctx.Tokens = append(ctx.Tokens, &NumberToken{Value: match})
-			input = input[len(match):]
-		} else if ore.MatchString(input) {
-			err = lexer.Exec(sm.Event(EVENT_SUPPORTED_TOKEN))
-
-			match := ore.FindString(input)
-			ctx.Tokens = append(ctx.Tokens, &OperandToken{Value: match})
-			input = input[len(match):]
-		} else if pre.MatchString(input) {
-			err = lexer.Exec(sm.Event(EVENT_PUNCTUATION_MARK))
-
-			match := pre.FindString(input)
-			input = input[len(match):]
+		if validRegex.MatchString(ctx.Input) {
+			err = lexer.Exec(sm.Event(eventSupportedToken))
 		} else {
-			err = lexer.Exec(sm.Event(EVENT_UNSUPPORTED_TOKEN))
+			err = lexer.Exec(sm.Event(eventUnsupportedToken))
 		}
 
 		if err != nil {
 			return nil, err
 		}
+	}
 
-		input = strings.TrimSpace(input)
+	err := lexer.Exec(sm.Event(eventEOF))
+	if err != nil {
+		return nil, err
 	}
-	if lexer.Current != sm.State(STATE_FINAL) {
-		return nil, ErrMissingPunctuationMark
-	}
+
 	return ctx.Tokens, nil
+}
+
+func newFinderToConstructorMap() map[PatternFinder]NewTokenFunc {
+	ftcMap := map[PatternFinder]NewTokenFunc{}
+
+	questionRegex := regexp.MustCompile(QuestionTokenPattern)
+	ftcMap[questionRegex] = NewQuestionToken
+
+	numberRegex := regexp.MustCompile(NumberTokenPattern)
+	ftcMap[numberRegex] = NewNumberToken
+
+	operandRegex := regexp.MustCompile(OperandTokenPattern)
+	ftcMap[operandRegex] = NewOperandToken
+
+	punctuationRegex := regexp.MustCompile(PunctuationTokenPattern)
+	ftcMap[punctuationRegex] = NewPunctuationToken
+
+	return ftcMap
 }
