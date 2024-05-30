@@ -126,5 +126,9 @@ func Parse(tokens []Token) ([]Token, error) {
 		}
 	}
 
+	if parser.Current != stateParserFinal {
+		return nil, ErrInvalidSyntax
+	}
+
 	return ctx.OutputTokens, nil
 }
