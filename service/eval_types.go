@@ -49,7 +49,7 @@ type Interpreter interface {
 	Execute(string) (int, error)
 }
 
-type ErrorRepository interface {
+type ExprErrorRepository interface {
 	Increment(*ExpressionError) error
 	GetAll() ([]ExpressionError, error)
 }

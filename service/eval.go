@@ -5,14 +5,14 @@ import (
 )
 
 type EvalService struct {
-	interp    Interpreter
-	errorRepo ErrorRepository
+	interp        Interpreter
+	exprErrorRepo ExprErrorRepository
 }
 
-func NewEvalService(interp Interpreter, errorRepo ErrorRepository) *EvalService {
+func NewEvalService(interp Interpreter, exprErrorRepo ExprErrorRepository) *EvalService {
 	return &EvalService{
-		interp:    interp,
-		errorRepo: errorRepo,
+		interp:        interp,
+		exprErrorRepo: exprErrorRepo,
 	}
 }
 
@@ -45,7 +45,7 @@ func (e *EvalService) Execute(expr string) (int, error) {
 }
 
 func (e *EvalService) GetExpressionErrors() ([]ExpressionError, error) {
-	exprErrors, err := e.errorRepo.GetAll()
+	exprErrors, err := e.exprErrorRepo.GetAll()
 	if err != nil {
 		return nil, NewEvalServiceError(err.Error())
 	}
@@ -65,7 +65,7 @@ func (e *EvalService) recordExpressionError(expr string, method MethodType, inte
 		Type:       errorType,
 	}
 
-	repoErr := e.errorRepo.Increment(&exprError)
+	repoErr := e.exprErrorRepo.Increment(&exprError)
 	if repoErr != nil {
 		return NewEvalServiceError(repoErr.Error())
 	}
