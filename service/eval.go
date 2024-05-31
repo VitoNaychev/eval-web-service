@@ -44,6 +44,15 @@ func (e *EvalService) Execute(expr string) (int, error) {
 	return -1, interpErr
 }
 
+func (e *EvalService) GetExpressionErrors() ([]ExpressionError, error) {
+	exprErrors, err := e.errorRepo.GetAll()
+	if err != nil {
+		return nil, NewEvalServiceError(err.Error())
+	}
+
+	return exprErrors, nil
+}
+
 func (e *EvalService) recordExpressionError(expr string, method MethodType, interpErr error) error {
 	errorType, err := evalServiceErrorToErrorType(interpErr)
 	if err != nil {

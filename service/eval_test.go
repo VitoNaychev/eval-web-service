@@ -28,13 +28,19 @@ func (s *StubInterpreter) Exec(q string) (int, error) {
 }
 
 type StubErrorRepository struct {
+	exprErrors []service.ExpressionError
+	err        error
+
 	spyExprError service.ExpressionError
-	err          error
 }
 
 func (s *StubErrorRepository) Increment(exprError *service.ExpressionError) error {
 	s.spyExprError = *exprError
 	return s.err
+}
+
+func (s *StubErrorRepository) GetAll() ([]service.ExpressionError, error) {
+	return s.exprErrors, s.err
 }
 
 func TestValidate(t *testing.T) {
@@ -219,5 +225,44 @@ func TestExecute(t *testing.T) {
 
 		assert.ErrorType[*service.EvalServiceError](t, gotErr)
 		assert.Equal(t, gotErr.Error(), repoErrMessage)
+	})
+}
+
+func TestGetExpressionErrors(t *testing.T) {
+	t.Run("returns all recorded expressions", func(t *testing.T) {
+		wantExprErrors := []service.ExpressionError{
+			{
+				Expression: "example expression",
+				Frequency:  3,
+				Method:     service.MethodExecute,
+				Type:       service.ErrorTypeNonMathQuestion,
+			},
+		}
+
+		interp := &StubInterpreter{}
+		repo := &StubErrorRepository{
+			exprErrors: wantExprErrors,
+		}
+		evalSvc := service.NewEvalService(interp, repo)
+
+		gotExprErrors, err := evalSvc.GetExpressionErrors()
+		assert.RequireNoError(t, err)
+
+		assert.Equal(t, gotExprErrors, wantExprErrors)
+	})
+
+	t.Run("wraps repository errors in EvalServiceError", func(t *testing.T) {
+		wantErrMessage := "repo error"
+
+		interp := &StubInterpreter{}
+		repo := &StubErrorRepository{
+			err: errors.New(wantErrMessage),
+		}
+		evalSvc := service.NewEvalService(interp, repo)
+
+		_, gotErr := evalSvc.GetExpressionErrors()
+
+		assert.ErrorType[*service.EvalServiceError](t, gotErr)
+		assert.Equal(t, gotErr.Error(), wantErrMessage)
 	})
 }

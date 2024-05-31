@@ -51,6 +51,7 @@ type Interpreter interface {
 
 type ErrorRepository interface {
 	Increment(*ExpressionError) error
+	GetAll() ([]ExpressionError, error)
 }
 
 type ErrorType int
