@@ -1,4 +1,4 @@
-package service
+package interp
 
 import "github.com/VitoNaychev/eval-web-service/sm"
 

@@ -1,4 +1,4 @@
-package service
+package interp
 
 type Token interface {
 	GetToken() interface{}
