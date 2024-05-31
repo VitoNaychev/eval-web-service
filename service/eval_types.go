@@ -12,7 +12,7 @@ type MethodType int
 
 const (
 	MethodValidate = iota
-	MethodExec
+	MethodExecute
 )
 
 type ExpressionError struct {

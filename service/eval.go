@@ -39,10 +39,9 @@ func (u *UnsupportedInterpreterError) Error() string {
 	return u.msg
 }
 
-func (u *UnsupportedInterpreterError) As(err any) bool {
-	if evalServiceError, ok := err.(**EvalServiceError); ok {
-		(*evalServiceError).msg = u.msg
-
+func (u *UnsupportedInterpreterError) As(target interface{}) bool {
+	if evalServiceError, ok := target.(**EvalServiceError); ok {
+		*evalServiceError = &EvalServiceError{msg: u.msg}
 		return true
 	}
 	return false
@@ -50,7 +49,7 @@ func (u *UnsupportedInterpreterError) As(err any) bool {
 
 type Interpreter interface {
 	Validate(string) (bool, error)
-	Exec(string) (int, error)
+	Execute(string) (int, error)
 }
 
 type ErrorRepository interface {
@@ -75,33 +74,57 @@ func (e *EvalService) Validate(expr string) (bool, error) {
 		return isValid, nil
 	}
 
+	err := e.recordExpressionError(expr, MethodValidate, interpErr)
+	if err != nil {
+		return false, err
+	}
+
+	return false, interpErr
+}
+
+func (e *EvalService) Execute(expr string) (int, error) {
+	result, interpErr := e.interp.Execute(expr)
+	if interpErr == nil {
+		return result, nil
+	}
+
+	err := e.recordExpressionError(expr, MethodExecute, interpErr)
+	if err != nil {
+		return -1, err
+	}
+
+	return -1, interpErr
+}
+
+func (e *EvalService) recordExpressionError(expr string, method MethodType, interpErr error) error {
 	errorType, err := evalServiceErrorToErrorType(interpErr)
 	if err != nil {
-		return isValid, err
+		return err
 	}
 
 	exprError := ExpressionError{
 		Expression: expr,
-		Method:     MethodValidate,
+		Method:     method,
 		Type:       errorType,
 	}
 
 	repoErr := e.errorRepo.Increment(&exprError)
 	if repoErr != nil {
-		return isValid, NewEvalServiceError(repoErr.Error())
+		return NewEvalServiceError(repoErr.Error())
 	}
 
-	return isValid, interpErr
+	return nil
 }
 
 func evalServiceErrorToErrorType(err error) (ErrorType, error) {
-	if errors.Is(err, ErrNonMathQuestion) {
+	switch {
+	case errors.Is(err, ErrNonMathQuestion):
 		return ErrorTypeNonMathQuestion, nil
-	} else if errors.Is(err, ErrUnsupportedOperation) {
+	case errors.Is(err, ErrUnsupportedOperation):
 		return ErrorTypeUnsupportedOperand, nil
-	} else if errors.Is(err, ErrInvalidSyntax) {
+	case errors.Is(err, ErrInvalidSyntax):
 		return ErrorTypeInvalidSyntax, nil
+	default:
+		return ErrorType(-1), NewUnsupportedInterpreterError(err.Error())
 	}
-
-	return ErrorType(-1), NewUnsupportedInterpreterError(err.Error())
 }
