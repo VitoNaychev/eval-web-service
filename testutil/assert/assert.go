@@ -1,9 +1,19 @@
 package assert
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 )
+
+func ErrorType[T error](t testing.TB, got error) {
+	t.Helper()
+
+	var want T
+	if !errors.As(got, &want) {
+		t.Errorf("got error with type %v want %v", reflect.TypeOf(got), reflect.TypeOf(want))
+	}
+}
 
 func RequireNoError(t testing.TB, err error) {
 	t.Helper()
