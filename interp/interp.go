@@ -5,18 +5,18 @@ import "strconv"
 func Interpret(tokens []Token) int {
 	result := parseNumberToken(tokens[0].(*NumberToken))
 
-	opPtr := 0
-	numPtr := 1
+	opPtr := 1
+	numPtr := 2
 
-	tokens = tokens[1:]
-	for len(tokens) != 0 {
+	for numPtr < len(tokens) {
 		numToken := tokens[numPtr].(*NumberToken)
 		number := parseNumberToken(numToken)
 
 		opToken := tokens[opPtr].(*OperandToken)
 		result = executeOperandToken(opToken, result, number)
 
-		tokens = tokens[2:]
+		opPtr += 2
+		numPtr += 2
 	}
 
 	return result
