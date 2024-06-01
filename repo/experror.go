@@ -11,7 +11,7 @@ type InMemoryExprErrorRepository struct {
 	mu         sync.Mutex
 }
 
-func NewInMemoryErrorRepository() *InMemoryExprErrorRepository {
+func NewInMemoryExprErrorRepository() *InMemoryExprErrorRepository {
 	return &InMemoryExprErrorRepository{
 		exprErrors: make(map[string]*service.ExpressionError),
 	}
