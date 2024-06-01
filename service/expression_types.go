@@ -2,24 +2,24 @@ package service
 
 import "fmt"
 
-type EvalServiceError struct {
+type ExpressionServiceError struct {
 	msg string
 }
 
-func NewEvalServiceError(msg string) error {
-	return &EvalServiceError{
+func NewExpressionServiceError(msg string) error {
+	return &ExpressionServiceError{
 		msg: msg,
 	}
 }
 
-func (e *EvalServiceError) Error() string {
+func (e *ExpressionServiceError) Error() string {
 	return e.msg
 }
 
 var (
-	ErrNonMathQuestion      = NewEvalServiceError("non-math question")
-	ErrUnsupportedOperation = NewEvalServiceError("unsupported operation")
-	ErrInvalidSyntax        = NewEvalServiceError("invalid syntax")
+	ErrNonMathQuestion      = NewExpressionServiceError("non-math question")
+	ErrUnsupportedOperation = NewExpressionServiceError("unsupported operation")
+	ErrInvalidSyntax        = NewExpressionServiceError("invalid syntax")
 )
 
 type UnsupportedInterpreterError struct {
@@ -37,8 +37,8 @@ func (u *UnsupportedInterpreterError) Error() string {
 }
 
 func (u *UnsupportedInterpreterError) As(target interface{}) bool {
-	if evalServiceError, ok := target.(**EvalServiceError); ok {
-		*evalServiceError = &EvalServiceError{msg: u.msg}
+	if evalServiceError, ok := target.(**ExpressionServiceError); ok {
+		*evalServiceError = &ExpressionServiceError{msg: u.msg}
 		return true
 	}
 	return false
@@ -46,7 +46,7 @@ func (u *UnsupportedInterpreterError) As(target interface{}) bool {
 
 type Interpreter interface {
 	Validate(string) (bool, error)
-	Execute(string) (int, error)
+	Evaluate(string) (int, error)
 }
 
 type ExprErrorRepository interface {
@@ -66,7 +66,7 @@ type MethodType int
 
 const (
 	MethodValidate = iota
-	MethodExecute
+	MethodEvaluate
 )
 
 type ExpressionError struct {

@@ -93,7 +93,7 @@ func exprErrorToExprErrorResponse(e service.ExpressionError) (ExpressionErrorRes
 
 func serviceMethodToEndpoint(m service.MethodType) (string, error) {
 	switch m {
-	case service.MethodExecute:
+	case service.MethodEvaluate:
 		return EvaluateEndpoint, nil
 	case service.MethodValidate:
 		return ValidateEndpoint, nil

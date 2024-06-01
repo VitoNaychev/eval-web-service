@@ -19,7 +19,7 @@ func (s *StubInterpreter) Validate(q string) (bool, error) {
 	return s.isValid, s.err
 }
 
-func (s *StubInterpreter) Execute(q string) (int, error) {
+func (s *StubInterpreter) Evaluate(q string) (int, error) {
 	return s.result, s.err
 }
 
@@ -52,9 +52,9 @@ func TestValidate(t *testing.T) {
 			isValid: wantValid,
 		}
 		repo := &StubErrorRepository{}
-		evalSvc := service.NewEvalService(interp, repo)
+		exprSvc := service.NewExpressionService(interp, repo)
 
-		gotValid, err := evalSvc.Validate(expression)
+		gotValid, err := exprSvc.Validate(expression)
 		assert.RequireNoError(t, err)
 
 		assert.Equal(t, gotValid, wantValid)
@@ -70,9 +70,9 @@ func TestValidate(t *testing.T) {
 			err:     wantErr,
 		}
 		repo := &StubErrorRepository{}
-		evalSvc := service.NewEvalService(interp, repo)
+		exprSvc := service.NewExpressionService(interp, repo)
 
-		gotValid, gotErr := evalSvc.Validate(expression)
+		gotValid, gotErr := exprSvc.Validate(expression)
 		assert.Equal(t, gotValid, wantValid)
 		assert.Equal(t, gotErr, wantErr)
 	})
@@ -92,9 +92,9 @@ func TestValidate(t *testing.T) {
 			err:     err,
 		}
 		repo := &StubErrorRepository{}
-		evalSvc := service.NewEvalService(interp, repo)
+		exprSvc := service.NewExpressionService(interp, repo)
 
-		_, _ = evalSvc.Validate(expression)
+		_, _ = exprSvc.Validate(expression)
 
 		assert.Equal(t, repo.spyExprError, wantExprError)
 	})
@@ -110,9 +110,9 @@ func TestValidate(t *testing.T) {
 			err:     err,
 		}
 		repo := &StubErrorRepository{}
-		evalSvc := service.NewEvalService(interp, repo)
+		exprSvc := service.NewExpressionService(interp, repo)
 
-		_, gotErr := evalSvc.Validate(expression)
+		_, gotErr := exprSvc.Validate(expression)
 
 		assert.ErrorType[*service.UnsupportedInterpreterError](t, gotErr)
 		assert.Equal(t, gotErr.Error(), wantErrMessage)
@@ -131,16 +131,16 @@ func TestValidate(t *testing.T) {
 		repo := &StubErrorRepository{
 			err: errors.New(repoErrMessage),
 		}
-		evalSvc := service.NewEvalService(interp, repo)
+		exprSvc := service.NewExpressionService(interp, repo)
 
-		_, gotErr := evalSvc.Validate(expression)
+		_, gotErr := exprSvc.Validate(expression)
 
-		assert.ErrorType[*service.EvalServiceError](t, gotErr)
+		assert.ErrorType[*service.ExpressionServiceError](t, gotErr)
 		assert.Equal(t, gotErr.Error(), repoErrMessage)
 	})
 }
 
-func TestExecute(t *testing.T) {
+func TestEvaluate(t *testing.T) {
 	t.Run("returns result on valid expression", func(t *testing.T) {
 		expression := "What is 5?"
 		wantResult := 5
@@ -149,9 +149,9 @@ func TestExecute(t *testing.T) {
 			result: wantResult,
 		}
 		repo := &StubErrorRepository{}
-		evalSvc := service.NewEvalService(interp, repo)
+		exprSvc := service.NewExpressionService(interp, repo)
 
-		gotResult, err := evalSvc.Execute(expression)
+		gotResult, err := exprSvc.Evaluate(expression)
 		assert.RequireNoError(t, err)
 
 		assert.Equal(t, gotResult, wantResult)
@@ -165,9 +165,9 @@ func TestExecute(t *testing.T) {
 			err: wantErr,
 		}
 		repo := &StubErrorRepository{}
-		evalSvc := service.NewEvalService(interp, repo)
+		exprSvc := service.NewExpressionService(interp, repo)
 
-		_, gotErr := evalSvc.Execute(expression)
+		_, gotErr := exprSvc.Evaluate(expression)
 		assert.Equal(t, gotErr, wantErr)
 	})
 
@@ -176,7 +176,7 @@ func TestExecute(t *testing.T) {
 		err := service.ErrNonMathQuestion
 		wantExprError := service.ExpressionError{
 			Expression: expression,
-			Method:     service.MethodExecute,
+			Method:     service.MethodEvaluate,
 			Type:       service.ErrorTypeNonMathQuestion,
 		}
 
@@ -184,9 +184,9 @@ func TestExecute(t *testing.T) {
 			err: err,
 		}
 		repo := &StubErrorRepository{}
-		evalSvc := service.NewEvalService(interp, repo)
+		exprSvc := service.NewExpressionService(interp, repo)
 
-		_, _ = evalSvc.Execute(expression)
+		_, _ = exprSvc.Evaluate(expression)
 
 		assert.Equal(t, repo.spyExprError, wantExprError)
 	})
@@ -200,9 +200,9 @@ func TestExecute(t *testing.T) {
 			err: err,
 		}
 		repo := &StubErrorRepository{}
-		evalSvc := service.NewEvalService(interp, repo)
+		exprSvc := service.NewExpressionService(interp, repo)
 
-		_, gotErr := evalSvc.Execute(expression)
+		_, gotErr := exprSvc.Evaluate(expression)
 
 		assert.ErrorType[*service.UnsupportedInterpreterError](t, gotErr)
 		assert.Equal(t, gotErr.Error(), wantErrMessage)
@@ -219,11 +219,11 @@ func TestExecute(t *testing.T) {
 		repo := &StubErrorRepository{
 			err: errors.New(repoErrMessage),
 		}
-		evalSvc := service.NewEvalService(interp, repo)
+		exprSvc := service.NewExpressionService(interp, repo)
 
-		_, gotErr := evalSvc.Execute(expression)
+		_, gotErr := exprSvc.Evaluate(expression)
 
-		assert.ErrorType[*service.EvalServiceError](t, gotErr)
+		assert.ErrorType[*service.ExpressionServiceError](t, gotErr)
 		assert.Equal(t, gotErr.Error(), repoErrMessage)
 	})
 }
@@ -234,7 +234,7 @@ func TestGetExpressionErrors(t *testing.T) {
 			{
 				Expression: "example expression",
 				Frequency:  3,
-				Method:     service.MethodExecute,
+				Method:     service.MethodEvaluate,
 				Type:       service.ErrorTypeNonMathQuestion,
 			},
 		}
@@ -243,9 +243,9 @@ func TestGetExpressionErrors(t *testing.T) {
 		repo := &StubErrorRepository{
 			exprErrors: wantExprErrors,
 		}
-		evalSvc := service.NewEvalService(interp, repo)
+		exprSvc := service.NewExpressionService(interp, repo)
 
-		gotExprErrors, err := evalSvc.GetExpressionErrors()
+		gotExprErrors, err := exprSvc.GetExpressionErrors()
 		assert.RequireNoError(t, err)
 
 		assert.Equal(t, gotExprErrors, wantExprErrors)
@@ -258,11 +258,11 @@ func TestGetExpressionErrors(t *testing.T) {
 		repo := &StubErrorRepository{
 			err: errors.New(wantErrMessage),
 		}
-		evalSvc := service.NewEvalService(interp, repo)
+		exprSvc := service.NewExpressionService(interp, repo)
 
-		_, gotErr := evalSvc.GetExpressionErrors()
+		_, gotErr := exprSvc.GetExpressionErrors()
 
-		assert.ErrorType[*service.EvalServiceError](t, gotErr)
+		assert.ErrorType[*service.ExpressionServiceError](t, gotErr)
 		assert.Equal(t, gotErr.Error(), wantErrMessage)
 	})
 }

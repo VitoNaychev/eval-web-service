@@ -4,19 +4,19 @@ import (
 	"errors"
 )
 
-type EvalService struct {
+type ExpressionService struct {
 	interp        Interpreter
 	exprErrorRepo ExprErrorRepository
 }
 
-func NewEvalService(interp Interpreter, exprErrorRepo ExprErrorRepository) *EvalService {
-	return &EvalService{
+func NewExpressionService(interp Interpreter, exprErrorRepo ExprErrorRepository) *ExpressionService {
+	return &ExpressionService{
 		interp:        interp,
 		exprErrorRepo: exprErrorRepo,
 	}
 }
 
-func (e *EvalService) Validate(expr string) (bool, error) {
+func (e *ExpressionService) Validate(expr string) (bool, error) {
 	isValid, interpErr := e.interp.Validate(expr)
 	if isValid {
 		return isValid, nil
@@ -30,13 +30,13 @@ func (e *EvalService) Validate(expr string) (bool, error) {
 	return false, interpErr
 }
 
-func (e *EvalService) Execute(expr string) (int, error) {
-	result, interpErr := e.interp.Execute(expr)
+func (e *ExpressionService) Evaluate(expr string) (int, error) {
+	result, interpErr := e.interp.Evaluate(expr)
 	if interpErr == nil {
 		return result, nil
 	}
 
-	err := e.recordExpressionError(expr, MethodExecute, interpErr)
+	err := e.recordExpressionError(expr, MethodEvaluate, interpErr)
 	if err != nil {
 		return -1, err
 	}
@@ -44,16 +44,16 @@ func (e *EvalService) Execute(expr string) (int, error) {
 	return -1, interpErr
 }
 
-func (e *EvalService) GetExpressionErrors() ([]ExpressionError, error) {
+func (e *ExpressionService) GetExpressionErrors() ([]ExpressionError, error) {
 	exprErrors, err := e.exprErrorRepo.GetAll()
 	if err != nil {
-		return nil, NewEvalServiceError(err.Error())
+		return nil, NewExpressionServiceError(err.Error())
 	}
 
 	return exprErrors, nil
 }
 
-func (e *EvalService) recordExpressionError(expr string, method MethodType, interpErr error) error {
+func (e *ExpressionService) recordExpressionError(expr string, method MethodType, interpErr error) error {
 	errorType, err := evalServiceErrorToErrorType(interpErr)
 	if err != nil {
 		return err
@@ -67,7 +67,7 @@ func (e *EvalService) recordExpressionError(expr string, method MethodType, inte
 
 	repoErr := e.exprErrorRepo.Increment(&exprError)
 	if repoErr != nil {
-		return NewEvalServiceError(repoErr.Error())
+		return NewExpressionServiceError(repoErr.Error())
 	}
 
 	return nil
