@@ -8,11 +8,6 @@ var (
 )
 
 const (
-	ValidateEndpoint = "/validate"
-	EvaluateEndpoint = "/evaluate"
-)
-
-const (
 	NonMathQuesionType     = "non-math question"
 	UnsupportedOperandType = "unknown operand"
 	InvalidSyntaxType      = "invalid syntax"
