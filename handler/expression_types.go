@@ -1,7 +1,32 @@
 package handler
 
+import "errors"
+
+var (
+	ErrUnknownMethod          = errors.New("unknwon method type")
+	ErrUnknownExpressionError = errors.New("unknwon expression error type")
+)
+
+const (
+	ValidateEndpoint = "/validate"
+	EvaluateEndpoint = "/evaluate"
+)
+
+const (
+	NonMathQuesionType     = "non-math question"
+	UnsupportedOperandType = "unknown operand"
+	InvalidSyntaxType      = "invalid syntax"
+)
+
 type ErrorResponse struct {
 	Error string `json:"message"`
+}
+
+type ExpressionErrorResponse struct {
+	Expression string `json:"message"`
+	Endpoint   string `json:"endpoint"`
+	Frequency  int    `json:"frequency"`
+	Type       string `json:"type"`
 }
 
 type ValidateResponse struct {

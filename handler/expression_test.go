@@ -9,13 +9,15 @@ import (
 	"testing"
 
 	"github.com/VitoNaychev/eval-web-service/handler"
+	"github.com/VitoNaychev/eval-web-service/service"
 	"github.com/VitoNaychev/eval-web-service/testutil/assert"
 )
 
 type StubExpressionService struct {
-	result  int
-	isValid bool
-	err     error
+	result     int
+	isValid    bool
+	exprErrors []service.ExpressionError
+	err        error
 }
 
 func (s *StubExpressionService) Evaluate(expression string) (int, error) {
@@ -24,6 +26,10 @@ func (s *StubExpressionService) Evaluate(expression string) (int, error) {
 
 func (s *StubExpressionService) Validate(expression string) (bool, error) {
 	return s.isValid, s.err
+}
+
+func (s *StubExpressionService) GetExpressionErrors() ([]service.ExpressionError, error) {
+	return s.exprErrors, s.err
 }
 
 func TestEvaluate(t *testing.T) {
@@ -150,6 +156,97 @@ func TestValidate(t *testing.T) {
 		assert.Equal(t, response.Code, http.StatusOK)
 
 		var gotResponse handler.ValidateResponse
+		json.NewDecoder(response.Body).Decode(&gotResponse)
+
+		assert.Equal(t, gotResponse, wantResponse)
+	})
+}
+
+func TestGetErrors(t *testing.T) {
+	t.Run("returns expression errors from service", func(t *testing.T) {
+		exprError := service.ExpressionError{
+			Expression: "example expression",
+			Method:     service.MethodValidate,
+			Frequency:  3,
+			Type:       service.ErrorTypeInvalidSyntax,
+		}
+		wantResponse := []handler.ExpressionErrorResponse{
+			{
+				Expression: exprError.Expression,
+				Endpoint:   handler.ValidateEndpoint,
+				Frequency:  exprError.Frequency,
+				Type:       handler.InvalidSyntaxType,
+			},
+		}
+
+		request, _ := http.NewRequest(http.MethodGet, "/", nil)
+		response := httptest.NewRecorder()
+
+		exprService := &StubExpressionService{
+			exprErrors: []service.ExpressionError{exprError},
+		}
+		exprHandler := handler.NewExpressionHandler(exprService)
+
+		exprHandler.GetExpressionErrors(response, request)
+		assert.Equal(t, response.Code, http.StatusOK)
+
+		var gotResponse []handler.ExpressionErrorResponse
+		json.NewDecoder(response.Body).Decode(&gotResponse)
+
+		assert.Equal(t, gotResponse, wantResponse)
+	})
+
+	t.Run("returns Internal Server Error on unknown method type from service", func(t *testing.T) {
+		exprError := service.ExpressionError{
+			Expression: "example expression",
+			Method:     service.MethodType(-1),
+			Frequency:  3,
+			Type:       service.ErrorTypeInvalidSyntax,
+		}
+		wantResponse := handler.ErrorResponse{
+			Error: handler.ErrUnknownMethod.Error(),
+		}
+
+		request, _ := http.NewRequest(http.MethodGet, "/", nil)
+		response := httptest.NewRecorder()
+
+		exprService := &StubExpressionService{
+			exprErrors: []service.ExpressionError{exprError},
+		}
+		exprHandler := handler.NewExpressionHandler(exprService)
+
+		exprHandler.GetExpressionErrors(response, request)
+		assert.Equal(t, response.Code, http.StatusInternalServerError)
+
+		var gotResponse handler.ErrorResponse
+		json.NewDecoder(response.Body).Decode(&gotResponse)
+
+		assert.Equal(t, gotResponse, wantResponse)
+	})
+
+	t.Run("returns Internal Server Error on unknown expression error type from service", func(t *testing.T) {
+		exprError := service.ExpressionError{
+			Expression: "example expression",
+			Method:     service.MethodValidate,
+			Frequency:  3,
+			Type:       service.ErrorType(-1),
+		}
+		wantResponse := handler.ErrorResponse{
+			Error: handler.ErrUnknownExpressionError.Error(),
+		}
+
+		request, _ := http.NewRequest(http.MethodGet, "/", nil)
+		response := httptest.NewRecorder()
+
+		exprService := &StubExpressionService{
+			exprErrors: []service.ExpressionError{exprError},
+		}
+		exprHandler := handler.NewExpressionHandler(exprService)
+
+		exprHandler.GetExpressionErrors(response, request)
+		assert.Equal(t, response.Code, http.StatusInternalServerError)
+
+		var gotResponse handler.ErrorResponse
 		json.NewDecoder(response.Body).Decode(&gotResponse)
 
 		assert.Equal(t, gotResponse, wantResponse)
