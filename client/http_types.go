@@ -31,7 +31,7 @@ type ExpressionRequest struct {
 
 type ExpressionErrorResponse struct {
 	Expression string `json:"expression"`
-	Method     string `json:"method"`
+	Endpoint   string `json:"endpoint"`
 	Frequency  int    `json:"frequency"`
 	Type       string `json:"type"`
 }

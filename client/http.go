@@ -79,10 +79,20 @@ func (e *ExpressionHTTPClient) GetExpressionErrors() ([]ExpressionError, error) 
 
 	var expressionErrors []ExpressionError
 	for _, expressionErrorResponse := range expressionErrorsResponse {
-		expressionErrors = append(expressionErrors, ExpressionError(expressionErrorResponse))
+		expressionErrors = append(expressionErrors,
+			expressionErrorResponseToExpressionError(expressionErrorResponse))
 	}
 
 	return expressionErrors, nil
+}
+
+func expressionErrorResponseToExpressionError(r ExpressionErrorResponse) ExpressionError {
+	return ExpressionError{
+		Expression: r.Expression,
+		Method:     r.Endpoint,
+		Frequency:  r.Frequency,
+		Type:       r.Type,
+	}
 }
 
 func handleServerError(response *http.Response) error {
