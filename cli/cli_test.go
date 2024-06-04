@@ -133,7 +133,7 @@ func TestCLI(t *testing.T) {
 			Frequency:  3,
 			Type:       "non-math question",
 		}
-		wantErrOutput := fmt.Sprintf(`\t"%s"; on %s; %d times; %s\n`,
+		wantErrOutput := fmt.Sprintf("\t\"%s\"; on %s; %d times; %s\n",
 			exprError.Expression, exprError.Method, exprError.Frequency, exprError.Type)
 
 		cmd := "!!"

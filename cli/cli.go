@@ -31,28 +31,41 @@ func NewCLI(client ExpressionClient, in io.Reader, out io.Writer) *CLI {
 }
 
 func (c *CLI) Run(ctx context.Context) {
+	inputCh := make(chan string)
+	go readInput(c.in, inputCh)
+
 	for {
+		writePromptSymbol(c.out, PromptSymbol)
+
 		select {
 		case <-ctx.Done():
 			return
-		default:
-		}
+		case cmd := <-inputCh:
+			if cmd == `\e` {
+				return
+			}
 
-		c.in.Scan()
-		cmd := c.in.Text()
-		if cmd == `\e` {
-			return
-		}
+			output, err := c.executeCommand(cmd)
+			if err != nil {
+				c.out.WriteString("error: " + err.Error())
+			} else {
+				c.out.WriteString(output)
+			}
 
-		output, err := c.executeCommand(cmd)
-		if err != nil {
-			c.out.WriteString("error: " + err.Error())
 			c.out.Flush()
-			continue
 		}
+	}
+}
 
-		c.out.WriteString(output)
-		c.out.Flush()
+func writePromptSymbol(out *bufio.Writer, prompt string) {
+	out.WriteString(prompt + " ")
+	out.Flush()
+}
+
+func readInput(in *bufio.Scanner, inputCh chan string) {
+	for in.Scan() {
+		input := in.Text()
+		inputCh <- input
 	}
 }
 
@@ -64,30 +77,29 @@ func (c *CLI) executeCommand(cmd string) (string, error) {
 	}
 
 	switch {
-	case strings.HasPrefix(cmd, ".. "):
-		expr := strings.TrimPrefix(cmd, ".. ")
+	case strings.HasPrefix(cmd, EvaluatePrefix):
+		expr := strings.TrimPrefix(cmd, EvaluatePrefix)
 		result, _ := c.client.Evaluate(expr)
 
 		output = fmt.Sprintln(result)
-	case strings.HasPrefix(cmd, "?? "):
-		expr := strings.TrimPrefix(cmd, "?? ")
+	case strings.HasPrefix(cmd, ValidatePrefix):
+		expr := strings.TrimPrefix(cmd, ValidatePrefix)
 		isValid, _ := c.client.Validate(expr)
 
 		output = fmt.Sprintln(isValid)
-	case strings.HasPrefix(cmd, "!!"):
+	case strings.HasPrefix(cmd, ExpressionErrorsPrefix):
 		exprErrors, _ := c.client.GetExpressionErrors()
-
 		for _, exprError := range exprErrors {
 			output += formatExpressionError(exprError)
 		}
 	default:
-		output = "unknown command"
+		output = "unknown command\n"
 	}
 
 	return output, nil
 }
 
 func formatExpressionError(e client.ExpressionError) string {
-	return fmt.Sprintf(`\t"%s"; on %s; %d times; %s\n`,
+	return fmt.Sprintf("\t\"%s\"; on %s; %d times; %s\n",
 		e.Expression, e.Method, e.Frequency, e.Type)
 }
