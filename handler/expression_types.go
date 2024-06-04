@@ -18,7 +18,7 @@ type ErrorResponse struct {
 }
 
 type ExpressionErrorResponse struct {
-	Expression string `json:"message"`
+	Expression string `json:"expression"`
 	Endpoint   string `json:"endpoint"`
 	Frequency  int    `json:"frequency"`
 	Type       string `json:"type"`
