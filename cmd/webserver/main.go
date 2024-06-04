@@ -22,6 +22,6 @@ func main() {
 
 	router := handler.NewRouter(exprHandler)
 
-	fmt.Println("Evaluate service listening on :8080...")
+	fmt.Println("Expression service listening on :8080...")
 	log.Fatal(http.ListenAndServe(":8080", router.Handler))
 }
