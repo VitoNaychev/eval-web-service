@@ -64,6 +64,27 @@ func (e *ExpressionHTTPClient) Validate(expr string) (bool, error) {
 	return validateResponse.Valid, nil
 }
 
+func (e *ExpressionHTTPClient) GetExpressionErrors() ([]ExpressionError, error) {
+	response, _ := e.client.Post(e.url+ExpressionErrorsURL, "application/json", nil)
+
+	if response.StatusCode != 200 {
+		var errorResponse ErrorResponse
+		json.NewDecoder(response.Body).Decode(&errorResponse)
+
+		return nil, NewClientError(errorResponse.Error)
+	}
+
+	var expressionErrorsResponse []ExpressionErrorResponse
+	json.NewDecoder(response.Body).Decode(&expressionErrorsResponse)
+
+	var expressionErrors []ExpressionError
+	for _, expressionErrorResponse := range expressionErrorsResponse {
+		expressionErrors = append(expressionErrors, ExpressionError(expressionErrorResponse))
+	}
+
+	return expressionErrors, nil
+}
+
 func handleServerError(response *http.Response) error {
 	var errorResponse ErrorResponse
 	json.NewDecoder(response.Body).Decode(&errorResponse)

@@ -72,13 +72,13 @@ func TestEvaluate(t *testing.T) {
 		}
 
 		wantResult := 15
-		expressionResponse := client.EvaluateResponse{
+		evaluateResponse := client.EvaluateResponse{
 			Result: wantResult,
 		}
 
 		httpClient := &StubHttpClient{
 			code:     http.StatusOK,
-			response: expressionResponse,
+			response: evaluateResponse,
 		}
 		exprClient := client.NewExpressionHTTPClient(httpClient, url)
 
@@ -95,6 +95,8 @@ func TestEvaluate(t *testing.T) {
 	})
 
 	t.Run("parses and returns error on Status Bad Request", func(t *testing.T) {
+		url := "example-url.com"
+
 		expression := "What is 5 plus 10?"
 
 		wantError := client.ErrNonMathQuestion
@@ -106,15 +108,18 @@ func TestEvaluate(t *testing.T) {
 			code:     http.StatusBadRequest,
 			response: errorResponse,
 		}
-		exprClient := client.NewExpressionHTTPClient(httpClient, "/evaluate")
+		exprClient := client.NewExpressionHTTPClient(httpClient, url)
 
 		_, gotError := exprClient.Evaluate(expression)
+		assert.RequireNotNil(t, gotError)
 
 		assert.ErrorType[*client.ClientError](t, gotError)
 		assert.Equal(t, gotError, wantError)
 	})
 
 	t.Run("wraps error message in ClientError on Internal Server Error", func(t *testing.T) {
+		url := "example-url.com"
+
 		expression := "What is 5 plus 10?"
 
 		wantError := errors.New("test error")
@@ -126,9 +131,10 @@ func TestEvaluate(t *testing.T) {
 			code:     http.StatusInternalServerError,
 			response: errorResponse,
 		}
-		exprClient := client.NewExpressionHTTPClient(httpClient, "/evaluate")
+		exprClient := client.NewExpressionHTTPClient(httpClient, url)
 
 		_, gotError := exprClient.Evaluate(expression)
+		assert.RequireNotNil(t, gotError)
 
 		assert.ErrorType[*client.ClientError](t, gotError)
 		assert.Equal(t, gotError.Error(), wantError.Error())
@@ -145,13 +151,13 @@ func TestValidate(t *testing.T) {
 		}
 
 		wantIsValid := true
-		expressionResponse := client.ValidateResponse{
+		validateResponse := client.ValidateResponse{
 			Valid: wantIsValid,
 		}
 
 		httpClient := &StubHttpClient{
 			code:     http.StatusOK,
-			response: expressionResponse,
+			response: validateResponse,
 		}
 		exprClient := client.NewExpressionHTTPClient(httpClient, url)
 
@@ -168,6 +174,8 @@ func TestValidate(t *testing.T) {
 	})
 
 	t.Run("parses and returns error on Status Bad Request", func(t *testing.T) {
+		url := "example-url.com"
+
 		expression := "What is 5 plus 10?"
 
 		wantError := client.ErrNonMathQuestion
@@ -179,15 +187,18 @@ func TestValidate(t *testing.T) {
 			code:     http.StatusBadRequest,
 			response: errorResponse,
 		}
-		exprClient := client.NewExpressionHTTPClient(httpClient, "/evaluate")
+		exprClient := client.NewExpressionHTTPClient(httpClient, url)
 
 		_, gotError := exprClient.Validate(expression)
+		assert.RequireNotNil(t, gotError)
 
 		assert.ErrorType[*client.ClientError](t, gotError)
 		assert.Equal(t, gotError, wantError)
 	})
 
 	t.Run("wraps error message in ClientError on Internal Server Error", func(t *testing.T) {
+		url := "example-url.com"
+
 		expression := "What is 5 plus 10?"
 
 		wantError := errors.New("test error")
@@ -199,9 +210,10 @@ func TestValidate(t *testing.T) {
 			code:     http.StatusInternalServerError,
 			response: errorResponse,
 		}
-		exprClient := client.NewExpressionHTTPClient(httpClient, "/evaluate")
+		exprClient := client.NewExpressionHTTPClient(httpClient, url)
 
 		_, gotError := exprClient.Validate(expression)
+		assert.RequireNotNil(t, gotError)
 
 		assert.ErrorType[*client.ClientError](t, gotError)
 		assert.Equal(t, gotError.Error(), wantError.Error())
@@ -209,5 +221,50 @@ func TestValidate(t *testing.T) {
 }
 
 func TestGetExpressionErrors(t *testing.T) {
+	t.Run("returns expression errors", func(t *testing.T) {
+		url := "example-url.com"
 
+		wantExpressionErrors := []client.ExpressionError{
+			{
+				Expression: "What is 5 cubed?",
+				Method:     "/validate",
+				Frequency:  3,
+				Type:       "unsupported operation",
+			},
+		}
+		expressionErrorsResponse := wantExpressionErrors
+
+		httpClient := &StubHttpClient{
+			code:     http.StatusOK,
+			response: expressionErrorsResponse,
+		}
+		exprClient := client.NewExpressionHTTPClient(httpClient, url)
+
+		gotExpressionErrors, _ := exprClient.GetExpressionErrors()
+
+		assert.Equal(t, gotExpressionErrors, wantExpressionErrors)
+
+		assert.Equal(t, httpClient.spyURL, url+client.ExpressionErrorsURL)
+	})
+
+	t.Run("wraps error message in ClientError on Internal Server Error", func(t *testing.T) {
+		url := "example-url.com"
+
+		wantError := errors.New("test error")
+		errorResponse := client.ErrorResponse{
+			Error: wantError.Error(),
+		}
+
+		httpClient := &StubHttpClient{
+			code:     http.StatusInternalServerError,
+			response: errorResponse,
+		}
+		exprClient := client.NewExpressionHTTPClient(httpClient, url)
+
+		_, gotError := exprClient.GetExpressionErrors()
+		assert.RequireNotNil(t, gotError)
+
+		assert.ErrorType[*client.ClientError](t, gotError)
+		assert.Equal(t, gotError.Error(), wantError.Error())
+	})
 }

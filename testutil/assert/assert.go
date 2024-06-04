@@ -6,6 +6,14 @@ import (
 	"testing"
 )
 
+func RequireNotNil(t testing.TB, got interface{}) {
+	t.Helper()
+
+	if got == nil {
+		t.Fatal("expected non-nil value, but got nil")
+	}
+}
+
 func ErrorType[T error](t testing.TB, got error) {
 	t.Helper()
 
