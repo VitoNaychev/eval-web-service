@@ -1,15 +1,15 @@
 package client
 
 const (
+	EvaluateURL         = "/evaluate"
+	ValidateURL         = "/validate"
+	ExpressionErrorsURL = "/errors"
+)
+
+const (
 	NonMathQuestionMessage      = "non-math question"
 	UnsupportedOperationMessage = "unsupported operation"
 	InvalidSyntaxMessasge       = "invalid syntax"
-)
-
-var (
-	ErrNonMathQuestion      = NewClientError("non-math question")
-	ErrUnsupportedOperation = NewClientError("unsupported operation")
-	ErrInvalidSyntax        = NewClientError("invalid syntax")
 )
 
 type ErrorResponse struct {

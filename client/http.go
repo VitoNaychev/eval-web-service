@@ -32,16 +32,10 @@ func (e *ExpressionHTTPClient) Evaluate(expr string) (int, error) {
 	body := bytes.NewBuffer([]byte{})
 	json.NewEncoder(body).Encode(expressionRequest)
 
-	response, _ := e.client.Post(e.url, "application/json", body)
+	response, _ := e.client.Post(e.url+EvaluateURL, "application/json", body)
 
 	if response.StatusCode != 200 {
-		var errorResponse ErrorResponse
-		json.NewDecoder(response.Body).Decode(&errorResponse)
-
-		if response.StatusCode == http.StatusBadRequest {
-			return -1, errorMessageToClientError(errorResponse.Error)
-		}
-		return -1, NewClientError(errorResponse.Error)
+		return -1, handleServerError(response)
 	}
 
 	var evaluateResponse EvaluateResponse
@@ -51,7 +45,33 @@ func (e *ExpressionHTTPClient) Evaluate(expr string) (int, error) {
 }
 
 func (e *ExpressionHTTPClient) Validate(expr string) (bool, error) {
-	return false, nil
+	expressionRequest := ExpressionRequest{
+		Expression: expr,
+	}
+
+	body := bytes.NewBuffer([]byte{})
+	json.NewEncoder(body).Encode(expressionRequest)
+
+	response, _ := e.client.Post(e.url+ValidateURL, "application/json", body)
+
+	if response.StatusCode != 200 {
+		return false, handleServerError(response)
+	}
+
+	var validateResponse ValidateResponse
+	json.NewDecoder(response.Body).Decode(&validateResponse)
+
+	return validateResponse.Valid, nil
+}
+
+func handleServerError(response *http.Response) error {
+	var errorResponse ErrorResponse
+	json.NewDecoder(response.Body).Decode(&errorResponse)
+
+	if response.StatusCode == http.StatusBadRequest {
+		return errorMessageToClientError(errorResponse.Error)
+	}
+	return NewClientError(errorResponse.Error)
 }
 
 func errorMessageToClientError(msg string) error {
