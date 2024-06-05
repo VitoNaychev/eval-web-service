@@ -230,5 +230,25 @@ The `testutil` package contains some common assertions used throughout the unit 
 
 ### Running the server
 
+The server can be run from the main project directory using the command:
+
+```
+go run cmd/webserver/main.go
+```
 
 ### Running the client
+
+The client can be run from the main project directory using the command:
+
+```
+go run cmd/webclient/main.go
+```
+
+Bellow is a list of the commands supported by the CLI.
+
+```
+.. [expression] - Evaluate expression.
+?? [expression] - Check whether an expression is valid.
+!!              - Return previous expression errors.
+\e              - Exit the command line.
+```
