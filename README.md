@@ -220,7 +220,7 @@ The `client` package contains an implementation of an http client. The http clie
 
 ### `cmd` package
 
-The `cmd` package contains the executables of the project. In the `webserver` directory is the main file that runs the evaluation server, while in the `webclient` directory is the main file of the command line interface that queries the web server as it's client.
+The `cmd` package contains the executables of the project. In the `webserver` directory is the main file that runs the evaluation server. In the `webclient` directory is the main file of the command line interface that queries the web server as it's client. The main files of both executables contain initialization of dependencies and start-up code for the server/cli.
 
 ### `testutil` package
 

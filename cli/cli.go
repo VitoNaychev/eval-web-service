@@ -3,6 +3,7 @@ package cli
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -47,7 +48,7 @@ func (c *CLI) Run(ctx context.Context) {
 
 			output, err := c.executeCommand(cmd)
 			if err != nil {
-				c.out.WriteString("error: " + err.Error())
+				c.out.WriteString("error: " + err.Error() + "\n")
 			} else {
 				c.out.WriteString(output)
 			}
@@ -79,21 +80,31 @@ func (c *CLI) executeCommand(cmd string) (string, error) {
 	switch {
 	case strings.HasPrefix(cmd, EvaluatePrefix):
 		expr := strings.TrimPrefix(cmd, EvaluatePrefix)
-		result, _ := c.client.Evaluate(expr)
+		result, err := c.client.Evaluate(expr)
+		if err != nil {
+			return "", err
+		}
 
 		output = fmt.Sprintln(result)
 	case strings.HasPrefix(cmd, ValidatePrefix):
 		expr := strings.TrimPrefix(cmd, ValidatePrefix)
-		isValid, _ := c.client.Validate(expr)
+		isValid, err := c.client.Validate(expr)
+		if err != nil {
+			return "", err
+		}
 
 		output = fmt.Sprintln(isValid)
 	case strings.HasPrefix(cmd, ExpressionErrorsPrefix):
-		exprErrors, _ := c.client.GetExpressionErrors()
+		exprErrors, err := c.client.GetExpressionErrors()
+		if err != nil {
+			return "", err
+		}
+
 		for _, exprError := range exprErrors {
 			output += formatExpressionError(exprError)
 		}
 	default:
-		output = "unknown command\n"
+		return "", errors.New("unknown command")
 	}
 
 	return output, nil
